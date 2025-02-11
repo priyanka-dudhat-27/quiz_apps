@@ -11,7 +11,7 @@ export const AuthProvider = ({ children }) => {
     const fetchUser = async () => {
       try {
         const res = await apiService.getCurrentUser();
-        console.log("User Fetched:", res.data); // Debugging
+        console.log("User Fetched:", res.data); 
         setUser(res.data);
       } catch (error) {
         setUser(null);

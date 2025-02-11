@@ -1,7 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useAuth } from "./context/AuthContext";
-import apiService from "./services/apiService";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -10,14 +9,20 @@ import QuizDetail from "./pages/QuizDetail";
 import Header from "./components/Header";
 import { Toaster } from "react-hot-toast";
 
-const App = () => {
-  const { user, setUser, loading } = useAuth();
-
-  useEffect(() => {
-    console.log("User in App:", user); // Debugging
-  }, [user]);
+const ProtectedRoute = ({ element }) => {
+  const { user, loading } = useAuth();
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;
+
+  return user ? element : <Navigate to="/login" />;
+};
+
+const App = () => {
+  const { user } = useAuth();
+
+  useEffect(() => {
+    console.log("User in App:", user);
+  }, [user]);
 
   return (
     <>
@@ -27,7 +32,7 @@ const App = () => {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
         <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
-        <Route path="/quiz/:id" element={<QuizDetail />} />
+        <Route path="/quiz/:id" element={<ProtectedRoute element={<QuizDetail />} />} />
         {user?.role === "admin" && <Route path="/create-quiz" element={<CreateQuiz />} />}
       </Routes>
     </>
