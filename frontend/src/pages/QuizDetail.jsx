@@ -14,8 +14,8 @@ const QuizDetail = () => {
     const fetchQuiz = async () => {
       try {
         const res = await apiService.getQuizById(id);
-        console.log("API Response:", res.data); // Log the response
-  
+        console.log("API Response:", res.data);
+
         if (res.data && Array.isArray(res.data.questions)) {
           setQuiz(res.data);
           setAnswers(new Array(res.data.questions.length).fill(null));
@@ -30,13 +30,31 @@ const QuizDetail = () => {
     };
     fetchQuiz();
   }, [id]);
-  
 
   if (!quiz) return <p className="text-center text-gray-600">Loading...</p>;
   if (!quiz.questions || quiz.questions.length === 0)
     return <p className="text-center text-red-500">No questions available.</p>;
 
-  const currentQuestion = quiz?.questions?.[currentQuestionIndex] || { text: "", choices: [] };
+  const currentQuestion = quiz.questions[currentQuestionIndex];
+
+  const handleSubmitQuiz = async () => {
+    try {
+      // Convert selected choices (text) into correct indexes
+      const formattedAnswers = answers.map((answer, index) =>
+        quiz.questions[index].choices.indexOf(answer)
+      );
+
+      const res = await apiService.submitQuiz({
+        quizId: id,
+        answers: formattedAnswers,
+      });
+
+      console.log("Quiz Submission Response:", res.data);
+      setScore(res.data.score);
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
@@ -54,35 +72,34 @@ const QuizDetail = () => {
           Question {currentQuestionIndex + 1} of {quiz.questions.length}
         </div>
 
-
-{currentQuestion?.choices?.length > 0 ? (
-  currentQuestion.choices.map((choice, i) => (
-    <label
-      key={i}
-      className={`block border p-3 rounded-md mb-2 cursor-pointer ${
-        answers[currentQuestionIndex] === choice
-          ? "bg-indigo-600 text-white"
-          : "bg-gray-100 hover:bg-gray-200"
-      }`}
-    >
-      <input
-        type="radio"
-        name={`question-${currentQuestionIndex}`}
-        value={choice}
-        className="hidden"
-        checked={answers[currentQuestionIndex] === choice}
-        onChange={() => {
-          const newAnswers = [...answers];
-          newAnswers[currentQuestionIndex] = choice;
-          setAnswers(newAnswers);
-        }}
-      />
-      {choice}
-    </label>
-  ))
-) : (
-  <p className="text-gray-500">No choices available.</p>
-)}
+        {currentQuestion?.choices?.length > 0 ? (
+          currentQuestion.choices.map((choice, i) => (
+            <label
+              key={i}
+              className={`block border p-3 rounded-md mb-2 cursor-pointer ${
+                answers[currentQuestionIndex] === choice
+                  ? "bg-indigo-600 text-white"
+                  : "bg-gray-100 hover:bg-gray-200"
+              }`}
+            >
+              <input
+                type="radio"
+                name={`question-${currentQuestionIndex}`}
+                value={choice}
+                className="hidden"
+                checked={answers[currentQuestionIndex] === choice}
+                onChange={() => {
+                  const newAnswers = [...answers];
+                  newAnswers[currentQuestionIndex] = choice;
+                  setAnswers(newAnswers);
+                }}
+              />
+              {choice}
+            </label>
+          ))
+        ) : (
+          <p className="text-gray-500">No choices available.</p>
+        )}
 
         <div className="flex justify-between">
           <button
@@ -95,7 +112,7 @@ const QuizDetail = () => {
 
           {currentQuestionIndex === quiz.questions.length - 1 ? (
             <button
-              onClick={() => console.log("Submit Quiz!")}
+              onClick={handleSubmitQuiz}
               className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
             >
               Submit Quiz
@@ -112,7 +129,7 @@ const QuizDetail = () => {
 
         {score !== null && (
           <p className="text-center mt-6 text-xl font-semibold">
-            Your score: {score}
+            Your score: {score} / {quiz.questions.length}
           </p>
         )}
       </div>

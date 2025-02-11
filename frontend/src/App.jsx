@@ -8,6 +8,7 @@ import CreateQuiz from "./pages/CreateQuiz.jsx";
 import QuizDetail from "./pages/QuizDetail";
 import Header from "./components/Header";
 import { Toaster } from "react-hot-toast";
+import ScorePage from "./pages/ScorePage.jsx";
 
 const ProtectedRoute = ({ element }) => {
   const { user, loading } = useAuth();
@@ -34,6 +35,8 @@ const App = () => {
         <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
         <Route path="/quiz/:id" element={<ProtectedRoute element={<QuizDetail />} />} />
         {user?.role === "admin" && <Route path="/create-quiz" element={<CreateQuiz />} />}
+        <Route path="/score" element={<ScorePage />} />
+
       </Routes>
     </>
   );
