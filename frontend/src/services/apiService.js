@@ -14,7 +14,7 @@ const apiService = {
   getQuizById: (id) => api.get(`/quiz/getQuizById/${id}`),
   createQuiz: (data) => api.post("/quiz/createQuiz", data),
   deleteQuiz: (id) => api.delete(`/quiz/quizzes/${id}`),
-  submitQuiz: (data) => api.post("/quiz/quizzes/submit", data),
+  submitQuiz: (data) => api.post("/quiz/submitQuiz", data),
 };
 
 export default apiService;

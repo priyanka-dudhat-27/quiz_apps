@@ -36,7 +36,7 @@ const QuizDetail = () => {
   if (!quiz.questions || quiz.questions.length === 0)
     return <p className="text-center text-red-500">No questions available.</p>;
 
-  const currentQuestion = quiz?.questions?.[currentQuestionIndex] || { text: "", options: [] };
+  const currentQuestion = quiz?.questions?.[currentQuestionIndex] || { text: "", choices: [] };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
@@ -54,47 +54,35 @@ const QuizDetail = () => {
           Question {currentQuestionIndex + 1} of {quiz.questions.length}
         </div>
 
-        {currentQuestion ? (
-          <motion.div
-            key={currentQuestionIndex}
-            className="mb-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <p className="text-xl font-semibold mb-4">{currentQuestion.text}</p>
-            {currentQuestion?.options?.length > 0 ? (
-              currentQuestion.options.map((option, i) => (
-                <label
-                  key={i}
-                  className={`block border p-3 rounded-md mb-2 cursor-pointer ${
-                    answers[currentQuestionIndex] === option
-                      ? "bg-indigo-600 text-white"
-                      : "bg-gray-100 hover:bg-gray-200"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name={`question-${currentQuestionIndex}`}
-                    value={option}
-                    className="hidden"
-                    checked={answers[currentQuestionIndex] === option}
-                    onChange={() => {
-                      const newAnswers = [...answers];
-                      newAnswers[currentQuestionIndex] = option;
-                      setAnswers(newAnswers);
-                    }}
-                  />
-                  {option}
-                </label>
-              ))
-            ) : (
-              <p className="text-gray-500">No options available.</p>
-            )}
-          </motion.div>
-        ) : (
-          <p className="text-gray-500">No questions available.</p>
-        )}
+
+{currentQuestion?.choices?.length > 0 ? (
+  currentQuestion.choices.map((choice, i) => (
+    <label
+      key={i}
+      className={`block border p-3 rounded-md mb-2 cursor-pointer ${
+        answers[currentQuestionIndex] === choice
+          ? "bg-indigo-600 text-white"
+          : "bg-gray-100 hover:bg-gray-200"
+      }`}
+    >
+      <input
+        type="radio"
+        name={`question-${currentQuestionIndex}`}
+        value={choice}
+        className="hidden"
+        checked={answers[currentQuestionIndex] === choice}
+        onChange={() => {
+          const newAnswers = [...answers];
+          newAnswers[currentQuestionIndex] = choice;
+          setAnswers(newAnswers);
+        }}
+      />
+      {choice}
+    </label>
+  ))
+) : (
+  <p className="text-gray-500">No choices available.</p>
+)}
 
         <div className="flex justify-between">
           <button
