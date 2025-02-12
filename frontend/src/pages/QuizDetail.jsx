@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import apiService from "../services/apiService";
 import { motion } from "framer-motion";
@@ -11,6 +11,43 @@ const QuizDetail = () => {
   const [answers, setAnswers] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  
+  // Timer states - changed to 2 minutes (120 seconds)
+  const [timeLeft, setTimeLeft] = useState(120);
+  const [timerActive, setTimerActive] = useState(false);
+
+  // Format time for display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  // Auto-submit when timer reaches zero
+  const handleTimeUp = useCallback(async () => {
+    if (!isSubmitted) {
+      toast.error("Time's up! Submitting quiz...");
+      await handleSubmitQuiz();
+    }
+  }, [isSubmitted]);
+
+  // Timer effect
+  useEffect(() => {
+    if (timerActive && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleTimeUp();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [timerActive, timeLeft, handleTimeUp]);
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -23,6 +60,7 @@ const QuizDetail = () => {
         if (res.data && Array.isArray(res.data.questions)) {
           setQuiz(res.data);
           setAnswers(new Array(res.data.questions.length).fill(null));
+          setTimerActive(true); // Start timer when quiz loads
         } else {
           console.error("Invalid quiz data:", res.data);
           setQuiz({ title: "Quiz not found", questions: [] });
@@ -102,9 +140,11 @@ const QuizDetail = () => {
       await apiService.submitQuiz({
         quizId: id,
         answers: formattedAnswers,
+        timeTaken: 2 - Math.ceil(timeLeft / 60) // Calculate minutes taken (max 2 minutes)
       });
 
       setIsSubmitted(true);
+      setTimerActive(false);
       toast.success("Quiz submitted successfully!");
     } catch (error) {
       console.error("Error submitting quiz:", error);
@@ -115,6 +155,13 @@ const QuizDetail = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="w-full max-w-2xl bg-white p-6 rounded-lg shadow-md">
+        {/* Timer Display - warning color at 30 seconds */}
+        <div className={`text-xl font-bold text-center mb-4 ${
+          timeLeft < 30 ? 'text-red-600' : 'text-indigo-600'
+        }`}>
+          Time Remaining: {formatTime(timeLeft)}
+        </div>
+
         <motion.h1
           className="text-3xl font-bold text-center text-indigo-600 mb-6"
           initial={{ opacity: 0 }}
@@ -123,6 +170,14 @@ const QuizDetail = () => {
         >
           {quiz.title}
         </motion.h1>
+
+        {/* Progress bar - now based on 2 minutes */}
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
+          <div 
+            className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+            style={{ width: `${(timeLeft / 120) * 100}%` }}
+          ></div>
+        </div>
 
         <div className="text-lg font-semibold mb-4">
           Question {currentQuestionIndex + 1} of {quiz.questions.length}
