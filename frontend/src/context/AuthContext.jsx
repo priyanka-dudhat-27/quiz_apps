@@ -7,6 +7,15 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  //logout 
+  
+  const logout = () => {
+    document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    setUser(null);
+  };
+
+
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -30,7 +39,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, setUser, loading }}>
+    <AuthContext.Provider value={{ user, setUser, loading ,logout}}>
       {children}
     </AuthContext.Provider>
   );

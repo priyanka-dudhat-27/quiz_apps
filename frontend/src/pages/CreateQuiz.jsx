@@ -1,218 +1,158 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import apiService from '../services/apiService';
-import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import apiService from "../services/apiService";
+import { motion } from "framer-motion";
+import { toast } from "react-hot-toast";
 
-const CreateQuiz = () => {
+const QuizDetail = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [quizData, setQuizData] = useState({
-    title: '',
-    description: '',
-    questions: [], 
-  });
-
-  const [newQuestion, setNewQuestion] = useState({
-    question: '',
-    options: ['', '', '', ''], 
-    correctAnswer: '',
-  });
-
-  const handleChange = (e) => {
-    setQuizData({ ...quizData, [e.target.name]: e.target.value });
+  const [quiz, setQuiz] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  
+  // Timer states - changed to 2 minutes (120 seconds)
+  const [timeLeft, setTimeLeft] = useState(120);
+  const [timerActive, setTimerActive] = useState(false);
+  
+  // Proctoring states
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  
+  // Format time for display
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const handleQuestionChange = (e) => {
-    setNewQuestion({ ...newQuestion, [e.target.name]: e.target.value });
+  // Handle tab switch tracking
+  const handleTabSwitch = () => {
+    setTabSwitchCount((prev) => {
+      if (prev + 1 >= 3) {
+        toast.error("Quiz terminated due to multiple tab switches!");
+        handleSubmitQuiz();
+      } else {
+        toast.warning(`Warning: Tab switch detected! (${prev + 1}/3)`);
+      }
+      return prev + 1;
+    });
   };
 
-  const handleOptionChange = (index, value) => {
-    const updatedOptions = [...newQuestion.options];
-    updatedOptions[index] = value;
-    setNewQuestion({ ...newQuestion, options: updatedOptions });
-  };
+  useEffect(() => {
+    window.addEventListener("blur", handleTabSwitch);
+    return () => {
+      window.removeEventListener("blur", handleTabSwitch);
+    };
+  }, []);
 
-  const addQuestion = () => {
-    if (
-      newQuestion.question &&
-      newQuestion.options.every((opt) => opt.trim() !== "") &&
-      newQuestion.correctAnswer !== "" 
-    ) {
-      setQuizData({
-        ...quizData,
-        questions: [
-          ...quizData.questions,
-          {
-            text: newQuestion.question,
-            choices: newQuestion.options,
-            correctAnswer: newQuestion.correctAnswer,
-          },
-        ],
+  // Enforce full-screen mode
+  const enforceFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {
+        toast.error("Full-screen mode is required for this quiz.");
       });
-  
-      setNewQuestion({ question: "", options: ["", "", "", ""], correctAnswer: "" });
-      toast.success("Question added!");
-    } else {  
-      toast.error("Fill all question details!");
     }
   };
-  
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (quizData.questions.length === 0) {
-      toast.error('Please add at least one question!');
-      return;
+  useEffect(() => {
+    enforceFullScreen();
+    document.addEventListener("fullscreenchange", enforceFullScreen);
+    return () => {
+      document.removeEventListener("fullscreenchange", enforceFullScreen);
+    };
+  }, []);
+
+  // Auto-submit when timer reaches zero
+  const handleTimeUp = useCallback(async () => {
+    if (!isSubmitted) {
+      toast.error("Time's up! Submitting quiz...");
+      await handleSubmitQuiz();
     }
+  }, [isSubmitted]);
 
+  // Timer effect
+  useEffect(() => {
+    if (timerActive && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleTimeUp();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [timerActive, timeLeft, handleTimeUp]);
+
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        const res = await apiService.getQuizById(id);
+        if (res.data && Array.isArray(res.data.questions)) {
+          setQuiz(res.data);
+          setAnswers(new Array(res.data.questions.length).fill(null));
+          setTimerActive(true); // Start timer when quiz loads
+        } else {
+          setQuiz({ title: "Quiz not found", questions: [] });
+        }
+      } catch (error) {
+        setQuiz({ title: "Quiz not found", questions: [] });
+      }
+    };
+    fetchQuiz();
+  }, [id]);
+
+  if (!quiz) return <p className="text-center text-gray-600">Loading...</p>;
+  if (!quiz.questions || quiz.questions.length === 0)
+    return <p className="text-center text-red-500">No questions available.</p>;
+
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <motion.div 
+          className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Thank You!</h2>
+          <p className="text-gray-600 mb-6">Your quiz has been submitted successfully.</p>
+          <motion.button
+            onClick={() => navigate('/')}
+            className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >Back to Home</motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  const currentQuestion = quiz.questions[currentQuestionIndex];
+
+  const handleSubmitQuiz = async () => {
     try {
-      await apiService.createQuiz(quizData);
-      toast.success('Quiz created successfully!');
-      navigate('/');
+      setIsSubmitted(true);
+      setTimerActive(false);
+      toast.success("Quiz submitted successfully!");
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Error creating quiz.');
+      toast.error("Failed to submit quiz");
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex justify-center items-center p-6">
-      <motion.div
-        className="bg-white shadow-lg rounded-2xl p-8 max-w-2xl w-full"
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <h2 className="text-3xl font-bold text-center text-indigo-600">
-          Create Quiz
-        </h2>
-        <p className="text-center text-gray-500 mb-6">
-          Add a new quiz with questions
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium">
-              Quiz Title
-            </label>
-            <input
-              type="text"
-              name="title"
-              placeholder="Enter quiz title"
-              value={quizData.title}
-              onChange={handleChange}
-              required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-          </div>
-
-          <div>
-            <label className="block text-gray-700 font-medium">
-              Description
-            </label>
-            <textarea
-              name="description"
-              placeholder="Enter quiz description"
-              value={quizData.description}
-              onChange={handleChange}
-              required
-              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            ></textarea>
-          </div>
-
-          <div className="bg-gray-50 p-4 rounded-lg shadow">
-            <h3 className="text-xl font-semibold text-indigo-600">
-              Add Question
-            </h3>
-
-            <div className="mt-2">
-              <label className="block text-gray-700 font-medium">
-                Question
-              </label>
-              <input
-                type="text"
-                name="question"
-                placeholder="Enter question"
-                value={newQuestion.question}
-                onChange={handleQuestionChange}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="mt-2">
-              <label className="block text-gray-700 font-medium">Options</label>
-              {newQuestion.options.map((opt, index) => (
-                <div key={index} className="flex items-center space-x-2 mb-2">
-                  <input
-                    type="text"
-                    value={opt}
-                    onChange={(e) => handleOptionChange(index, e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                    placeholder={`Option ${index + 1}`}
-                  />
-                  <input
-                    type="radio"
-                    name="correctAnswer"
-                    value={index} 
-                    checked={newQuestion.correctAnswer === index}
-                    onChange={(e) =>
-                      setNewQuestion({
-                        ...newQuestion,
-                        correctAnswer: Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={addQuestion}
-              className="mt-4 w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
-            >
-              Add Question
-            </button>
-          </div>
-
-          {quizData.questions.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-xl font-semibold text-indigo-600">
-                Added Questions
-              </h3>
-              <ul className="mt-2 space-y-2">
-                {quizData.questions.map((q, index) => (
-                  <li key={index} className="p-3 bg-gray-100 rounded-lg shadow">
-                    <p className="font-semibold">{q.text}</p>
-                    <ul className="mt-1 text-gray-600">
-                      {q.choices.map((opt, i) => (
-                        <li
-                          key={i}
-                          className={
-                            i === q.correctAnswer
-                              ? 'font-bold text-green-600'
-                              : ''
-                          }
-                        >
-                          {opt}
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-medium text-lg hover:bg-green-700 transition duration-300"
-          >
-            Create Quiz
-          </button>
-        </form>
-      </motion.div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
+      <div className="w-full max-w-2xl bg-white p-6 rounded-lg shadow-md">
+        <div className={`text-xl font-bold text-center mb-4 ${timeLeft < 30 ? 'text-red-600' : 'text-indigo-600'}`}>Time Remaining: {formatTime(timeLeft)}</div>
+        <motion.h1 className="text-3xl font-bold text-center text-indigo-600 mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>{quiz.title}</motion.h1>
+        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6"><div className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300" style={{ width: `${(timeLeft / 120) * 100}%` }}></div></div>
+      </div>
     </div>
   );
 };
 
-export default CreateQuiz;
+export default QuizDetail;
