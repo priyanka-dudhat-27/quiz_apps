@@ -4,7 +4,7 @@ import apiService from "../services/apiService";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 
-const QuizDetail = () => {
+const CreateQuiz = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
@@ -16,52 +16,12 @@ const QuizDetail = () => {
   const [timeLeft, setTimeLeft] = useState(120);
   const [timerActive, setTimerActive] = useState(false);
   
-  // Proctoring states
-  const [tabSwitchCount, setTabSwitchCount] = useState(0);
-  
   // Format time for display
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
-
-  // Handle tab switch tracking
-  const handleTabSwitch = () => {
-    setTabSwitchCount((prev) => {
-      if (prev + 1 >= 3) {
-        toast.error("Quiz terminated due to multiple tab switches!");
-        handleSubmitQuiz();
-      } else {
-        toast.warning(`Warning: Tab switch detected! (${prev + 1}/3)`);
-      }
-      return prev + 1;
-    });
-  };
-
-  useEffect(() => {
-    window.addEventListener("blur", handleTabSwitch);
-    return () => {
-      window.removeEventListener("blur", handleTabSwitch);
-    };
-  }, []);
-
-  // Enforce full-screen mode
-  const enforceFullScreen = () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {
-        toast.error("Full-screen mode is required for this quiz.");
-      });
-    }
-  };
-
-  useEffect(() => {
-    enforceFullScreen();
-    document.addEventListener("fullscreenchange", enforceFullScreen);
-    return () => {
-      document.removeEventListener("fullscreenchange", enforceFullScreen);
-    };
-  }, []);
 
   // Auto-submit when timer reaches zero
   const handleTimeUp = useCallback(async () => {
@@ -92,6 +52,7 @@ const QuizDetail = () => {
     const fetchQuiz = async () => {
       try {
         const res = await apiService.getQuizById(id);
+        console.log(res,"<<<<<<<<<<<<<<")
         if (res.data && Array.isArray(res.data.questions)) {
           setQuiz(res.data);
           setAnswers(new Array(res.data.questions.length).fill(null));
@@ -155,4 +116,4 @@ const QuizDetail = () => {
   );
 };
 
-export default QuizDetail;
+export default CreateQuiz;
