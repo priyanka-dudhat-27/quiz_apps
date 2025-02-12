@@ -20,7 +20,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md py-4">
+    <header className="bg-gradient-to-r from-blue-500 to-indigo-600 shadow-md py-4 fixed top-0 w-full z-50">
       <div className="container mx-auto px-4 flex justify-between items-center">
         {/* Logo */}
         <Link to="/" className="text-white text-2xl font-bold">
@@ -63,14 +63,13 @@ const Header = () => {
 
             {/* Show 'View Scores' if user is an admin */}
             {user?.role === 'admin' && (
-               <li>
-               <Link to="/admin/scores" className="hover:text-gray-200 transition duration-200">
-               View Scores
-               </Link>
-             </li>
+              <li>
+                <Link to="/admin/scores" className="hover:text-gray-200 transition duration-200">
+                  View Scores
+                </Link>
+              </li>
             )}
 
-            
             {/* Show 'Logout' if user is logged in */}
             {user && (
               <li>
