@@ -35,9 +35,16 @@ const Home = () => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
         {quizzes.map((quiz) => (
-          <motion.div key={quiz._id} className="bg-white p-6 rounded-lg shadow-md" whileHover={{ scale: 1.05 }}>
+          <motion.div 
+            key={quiz._id} 
+            className="bg-white p-6 rounded-lg shadow-md" 
+            whileHover={{ scale: 1.05 }}
+          >
             <h2 className="text-xl font-semibold">{quiz.title}</h2>
             <p className="text-gray-600">{quiz.description}</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {quiz.questions?.length || 0} questions
+            </p>
             <button
               onClick={() => {
                 if (!user) {

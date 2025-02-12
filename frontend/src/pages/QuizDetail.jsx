@@ -15,6 +15,8 @@ const QuizDetail = () => {
       try {
         const res = await apiService.getQuizById(id);
         console.log("API Response:", res.data);
+        console.log("Questions:", res.data.questions);
+        console.log("First Question:", res.data.questions[0]);
 
         if (res.data && Array.isArray(res.data.questions)) {
           setQuiz(res.data);
@@ -70,6 +72,10 @@ const QuizDetail = () => {
 
         <div className="text-lg font-semibold mb-4">
           Question {currentQuestionIndex + 1} of {quiz.questions.length}
+        </div>
+
+        <div className="text-xl mb-4">
+          {currentQuestion?.text}
         </div>
 
         {currentQuestion?.choices?.length > 0 ? (

@@ -9,7 +9,7 @@ const CreateQuiz = () => {
   const [quizData, setQuizData] = useState({
     title: '',
     description: '',
-    questions: [],
+    questions: [], 
   });
 
   const [newQuestion, setNewQuestion] = useState({
@@ -44,15 +44,15 @@ const CreateQuiz = () => {
           ...quizData.questions,
           {
             text: newQuestion.question,
-            choices: newQuestion.options, 
-            correctAnswer: newQuestion.correctAnswer, 
+            choices: newQuestion.options,
+            correctAnswer: newQuestion.correctAnswer,
           },
         ],
       });
   
       setNewQuestion({ question: "", options: ["", "", "", ""], correctAnswer: "" });
       toast.success("Question added!");
-    } else {
+    } else {  
       toast.error("Fill all question details!");
     }
   };
@@ -182,13 +182,13 @@ const CreateQuiz = () => {
               <ul className="mt-2 space-y-2">
                 {quizData.questions.map((q, index) => (
                   <li key={index} className="p-3 bg-gray-100 rounded-lg shadow">
-                    <p className="font-semibold">{q.question}</p>
+                    <p className="font-semibold">{q.text}</p>
                     <ul className="mt-1 text-gray-600">
-                      {q.options.map((opt, i) => (
+                      {q.choices.map((opt, i) => (
                         <li
                           key={i}
                           className={
-                            opt === q.correctAnswer
+                            i === q.correctAnswer
                               ? 'font-bold text-green-600'
                               : ''
                           }
