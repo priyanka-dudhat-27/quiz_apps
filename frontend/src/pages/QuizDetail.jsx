@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import apiService from "../services/apiService";
 import { motion } from "framer-motion";
+import { toast } from "react-hot-toast";
 
 const QuizDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [quiz, setQuiz] = useState(null);
   const [answers, setAnswers] = useState([]);
-  const [score, setScore] = useState(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   useEffect(() => {
@@ -37,24 +39,76 @@ const QuizDetail = () => {
   if (!quiz.questions || quiz.questions.length === 0)
     return <p className="text-center text-red-500">No questions available.</p>;
 
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <motion.div 
+          className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 150 }}
+          >
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <svg 
+                className="w-10 h-10 text-green-500" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth="2" 
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+          </motion.div>
+
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            Thank You!
+          </h2>
+          
+          <p className="text-gray-600 mb-6">
+            Your quiz has been submitted successfully. Your instructor will review your submission.
+          </p>
+
+          <motion.button
+            onClick={() => navigate('/')}
+            className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Back to Home
+          </motion.button>
+        </motion.div>
+      </div>
+    );
+  }
+
   const currentQuestion = quiz.questions[currentQuestionIndex];
 
   const handleSubmitQuiz = async () => {
     try {
-      // Convert selected choices (text) into correct indexes
       const formattedAnswers = answers.map((answer, index) =>
         quiz.questions[index].choices.indexOf(answer)
       );
 
-      const res = await apiService.submitQuiz({
+      await apiService.submitQuiz({
         quizId: id,
         answers: formattedAnswers,
       });
 
-      console.log("Quiz Submission Response:", res.data);
-      setScore(res.data.score);
+      setIsSubmitted(true);
+      toast.success("Quiz submitted successfully!");
     } catch (error) {
       console.error("Error submitting quiz:", error);
+      toast.error("Failed to submit quiz");
     }
   };
 
@@ -132,12 +186,6 @@ const QuizDetail = () => {
             </button>
           )}
         </div>
-
-        {score !== null && (
-          <p className="text-center mt-6 text-xl font-semibold">
-            Your score: {score} / {quiz.questions.length}
-          </p>
-        )}
       </div>
     </div>
   );
