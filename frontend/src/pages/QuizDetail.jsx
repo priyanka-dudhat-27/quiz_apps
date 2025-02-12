@@ -1,29 +1,36 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import apiService from "../services/apiService";
+import { useAuth } from "../context/AuthContext";
 import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 
 const QuizDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { setUser } = useAuth(); // Access AuthContext to log out user
+
   const [quiz, setQuiz] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   
-  // Timer states - changed to 2 minutes (120 seconds)
+  // Proctored Features
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const maxTabSwitches = 3; // Limit before termination
+
+  // Timer states
   const [timeLeft, setTimeLeft] = useState(120);
   const [timerActive, setTimerActive] = useState(false);
 
-  // Format time for display
+  // Format time
   const formatTime = (seconds) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Auto-submit when timer reaches zero
+  // Handle Time Up
   const handleTimeUp = useCallback(async () => {
     if (!isSubmitted) {
       toast.error("Time's up! Submitting quiz...");
@@ -53,83 +60,63 @@ const QuizDetail = () => {
     const fetchQuiz = async () => {
       try {
         const res = await apiService.getQuizById(id);
-        console.log("API Response:", res.data);
-        console.log("Questions:", res.data.questions);
-        console.log("First Question:", res.data.questions[0]);
-
         if (res.data && Array.isArray(res.data.questions)) {
           setQuiz(res.data);
           setAnswers(new Array(res.data.questions.length).fill(null));
           setTimerActive(true); // Start timer when quiz loads
+          enforceFullScreen(); // Ensure full-screen
         } else {
-          console.error("Invalid quiz data:", res.data);
           setQuiz({ title: "Quiz not found", questions: [] });
         }
       } catch (error) {
-        console.error("Failed to fetch quiz:", error);
         setQuiz({ title: "Quiz not found", questions: [] });
       }
     };
     fetchQuiz();
   }, [id]);
 
+  // **Full-Screen Enforcement**
+  const enforceFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error("Fullscreen request failed:", err);
+      });
+    }
+  };
+
+  // **Detect Tab Switching**
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setTabSwitchCount((prev) => prev + 1);
+        toast.error(`Warning: You switched tabs! (${tabSwitchCount + 1}/3)`);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [tabSwitchCount]);
+
+  // **Terminate Quiz on 3rd Warning**
+  useEffect(() => {
+    if (tabSwitchCount >= maxTabSwitches) {
+      handleQuizTermination();
+    }
+  }, [tabSwitchCount]);
+
+  // **Handle Quiz Termination**
+  const handleQuizTermination = () => {
+    toast.error("Quiz terminated due to multiple tab switches.");
+    setUser(null); // Log out user
+    navigate("/login"); // Redirect to login
+  };
+
   if (!quiz) return <p className="text-center text-gray-600">Loading...</p>;
   if (!quiz.questions || quiz.questions.length === 0)
     return <p className="text-center text-red-500">No questions available.</p>;
-
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <motion.div 
-          className="max-w-md w-full bg-white p-8 rounded-lg shadow-lg text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: "spring", stiffness: 150 }}
-          >
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg 
-                className="w-10 h-10 text-green-500" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth="2" 
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
-            </div>
-          </motion.div>
-
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
-            Thank You!
-          </h2>
-          
-          <p className="text-gray-600 mb-6">
-            Your quiz has been submitted successfully. Your instructor will review your submission.
-          </p>
-
-          <motion.button
-            onClick={() => navigate('/')}
-            className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Back to Home
-          </motion.button>
-        </motion.div>
-      </div>
-    );
-  }
-
-  const currentQuestion = quiz.questions[currentQuestionIndex];
 
   const handleSubmitQuiz = async () => {
     try {
@@ -140,14 +127,13 @@ const QuizDetail = () => {
       await apiService.submitQuiz({
         quizId: id,
         answers: formattedAnswers,
-        timeTaken: 2 - Math.ceil(timeLeft / 60) // Calculate minutes taken (max 2 minutes)
+        timeTaken: 2 - Math.ceil(timeLeft / 60),
       });
 
       setIsSubmitted(true);
       setTimerActive(false);
       toast.success("Quiz submitted successfully!");
     } catch (error) {
-      console.error("Error submitting quiz:", error);
       toast.error("Failed to submit quiz");
     }
   };
@@ -155,88 +141,53 @@ const QuizDetail = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
       <div className="w-full max-w-2xl bg-white p-6 rounded-lg shadow-md">
-        {/* Timer Display - warning color at 30 seconds */}
-        <div className={`text-xl font-bold text-center mb-4 ${
-          timeLeft < 30 ? 'text-red-600' : 'text-indigo-600'
-        }`}>
+        <div className={`text-xl font-bold text-center mb-4 ${timeLeft < 30 ? 'text-red-600' : 'text-indigo-600'}`}>
           Time Remaining: {formatTime(timeLeft)}
         </div>
 
-        <motion.h1
-          className="text-3xl font-bold text-center text-indigo-600 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1 }}
-        >
+        <motion.h1 className="text-3xl font-bold text-center text-indigo-600 mb-6"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1 }}>
           {quiz.title}
         </motion.h1>
-
-        {/* Progress bar - now based on 2 minutes */}
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-6">
-          <div 
-            className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-            style={{ width: `${(timeLeft / 120) * 100}%` }}
-          ></div>
-        </div>
 
         <div className="text-lg font-semibold mb-4">
           Question {currentQuestionIndex + 1} of {quiz.questions.length}
         </div>
 
         <div className="text-xl mb-4">
-          {currentQuestion?.text}
+          {quiz.questions[currentQuestionIndex]?.text}
         </div>
 
-        {currentQuestion?.choices?.length > 0 ? (
-          currentQuestion.choices.map((choice, i) => (
-            <label
-              key={i}
-              className={`block border p-3 rounded-md mb-2 cursor-pointer ${
-                answers[currentQuestionIndex] === choice
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
-            >
-              <input
-                type="radio"
-                name={`question-${currentQuestionIndex}`}
-                value={choice}
-                className="hidden"
-                checked={answers[currentQuestionIndex] === choice}
-                onChange={() => {
-                  const newAnswers = [...answers];
-                  newAnswers[currentQuestionIndex] = choice;
-                  setAnswers(newAnswers);
-                }}
-              />
-              {choice}
-            </label>
-          ))
-        ) : (
-          <p className="text-gray-500">No choices available.</p>
-        )}
+        {quiz.questions[currentQuestionIndex]?.choices?.map((choice, i) => (
+          <label key={i} className={`block border p-3 rounded-md mb-2 cursor-pointer ${
+            answers[currentQuestionIndex] === choice ? "bg-indigo-600 text-white" : "bg-gray-100 hover:bg-gray-200"
+          }`}>
+            <input type="radio" name={`question-${currentQuestionIndex}`} value={choice} className="hidden"
+              checked={answers[currentQuestionIndex] === choice}
+              onChange={() => {
+                const newAnswers = [...answers];
+                newAnswers[currentQuestionIndex] = choice;
+                setAnswers(newAnswers);
+              }} />
+            {choice}
+          </label>
+        ))}
 
         <div className="flex justify-between">
-          <button
-            onClick={() => setCurrentQuestionIndex((prev) => prev - 1)}
+          <button onClick={() => setCurrentQuestionIndex((prev) => prev - 1)}
             disabled={currentQuestionIndex === 0}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg disabled:opacity-50"
-          >
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg disabled:opacity-50">
             Previous
           </button>
 
           {currentQuestionIndex === quiz.questions.length - 1 ? (
-            <button
-              onClick={handleSubmitQuiz}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-            >
+            <button onClick={handleSubmitQuiz}
+              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
               Submit Quiz
             </button>
           ) : (
-            <button
-              onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
-            >
+            <button onClick={() => setCurrentQuestionIndex((prev) => prev + 1)}
+              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
               Next
             </button>
           )}
