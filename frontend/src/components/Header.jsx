@@ -10,8 +10,11 @@ const Header = () => {
     try {
       await apiService.logout();
       setUser(null);
+      // Clear any stored auth data
+      document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
       toast.success("Logged out successfully!");
     } catch (error) {
+      console.error("Logout error:", error);
       toast.error("Logout failed!");
     }
   };
@@ -58,6 +61,16 @@ const Header = () => {
               </>
             )}
 
+            {/* Show 'View Scores' if user is an admin */}
+            {user?.role === 'admin' && (
+               <li>
+               <Link to="/admin/scores" className="hover:text-gray-200 transition duration-200">
+               View Scores
+               </Link>
+             </li>
+            )}
+
+            
             {/* Show 'Logout' if user is logged in */}
             {user && (
               <li>

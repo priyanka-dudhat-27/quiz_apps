@@ -8,18 +8,25 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUser = async () => {
+    const checkAuth = async () => {
       try {
-        const res = await apiService.getCurrentUser();
-        console.log("User Fetched:", res.data); 
-        setUser(res.data);
+        // Only check auth if there's a token in cookies
+        const token = document.cookie.includes('token');
+        if (token) {
+          const res = await apiService.getCurrentUser();
+          setUser(res.data);
+        } else {
+          setUser(null);
+        }
       } catch (error) {
+        console.error("Auth check failed:", error);
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
-    fetchUser();
+
+    checkAuth();
   }, []);
 
   return (
