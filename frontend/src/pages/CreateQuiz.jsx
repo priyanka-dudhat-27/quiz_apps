@@ -31,9 +31,9 @@ const CreateQuiz = () => {
     setQuestions(newQuestions);
   };
 
-  const handleCorrectAnswerChange = (index, value) => {
+  const handleCorrectAnswerChange = (qIndex, value) => {
     const newQuestions = [...questions];
-    newQuestions[index].correctAnswer = value;
+    newQuestions[qIndex].correctAnswer = value;
     setQuestions(newQuestions);
   };
 
@@ -51,7 +51,7 @@ const CreateQuiz = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white p-6">
       <motion.div 
-        className="w-full max-w-4xl bg-white p-6 rounded-lg shadow-md"
+        className="w-full max-w-4xl bg-white p-4 rounded-lg shadow-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -103,26 +103,25 @@ const CreateQuiz = () => {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 {question.choices.map((choice, cIndex) => (
                   <motion.div key={cIndex} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 * (cIndex + 1) }}>
-                    <label className="block text-gray-700 text-sm font-bold">Choice {cIndex + 1}</label>
-                    <input
-                      type="text"
-                      value={choice}
-                      onChange={(e) => handleChoiceChange(qIndex, cIndex, e.target.value)}
-                      className="border border-gray-300 rounded-lg w-full py-2 px-3 focus:outline-blue-500"
-                      required
-                    />
+                    <label className="flex items-center gap-2 text-gray-700 text-sm font-bold">
+                      <input
+                        type="radio"
+                        name={`correctAnswer-${qIndex}`}
+                        value={choice}
+                        checked={question.correctAnswer === choice}
+                        onChange={() => handleCorrectAnswerChange(qIndex, choice)}
+                        className="form-radio h-4 w-4 text-blue-600"
+                      />
+                      <input
+                        type="text"
+                        value={choice}
+                        onChange={(e) => handleChoiceChange(qIndex, cIndex, e.target.value)}
+                        className="border border-gray-300 rounded-lg w-full py-2 px-3 focus:outline-blue-500"
+                        required
+                      />
+                    </label>
                   </motion.div>
                 ))}
-              </div>
-              <div className="mt-4">
-                <label className="block text-gray-700 text-sm font-bold">Correct Answer</label>
-                <input
-                  type="text"
-                  value={question.correctAnswer}
-                  onChange={(e) => handleCorrectAnswerChange(qIndex, e.target.value)}
-                  className="border border-gray-300 rounded-lg w-full py-2 px-3 focus:outline-blue-500"
-                  required
-                />
               </div>
               <motion.button
                 type="button"
@@ -138,7 +137,7 @@ const CreateQuiz = () => {
           <motion.button
             type="button"
             onClick={handleAddQuestion}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition mb-4"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -146,7 +145,7 @@ const CreateQuiz = () => {
           </motion.button>
           <motion.button
             type="submit"
-            className="mt-6 bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition"
+            className="w-full mt-6 bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 transition"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
